@@ -8,7 +8,7 @@
 | **Tool we had to use** | API + Python code |
 | **Live app** | [tagalong.streamlit.app](https://tagalong.streamlit.app) |
 | **Presentation** | [https://canva.link/lszrehqi6erg3vr](https://canva.link/lszrehqi6erg3vr) |
-| **Demo video** | [YouTube link — to be added] |
+| **Demo video** | [https://youtu.be/_sWWx5a9x_U](https://youtu.be/_sWWx5a9x_U) |
 | **GitHub** | [github.com/nemoyrolls/meedoen](https://github.com/nemoyrolls/meedoen) (to be renamed to `tagalong`) |
 
 ## What problem does it solve, and for whom?
