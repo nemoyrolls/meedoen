@@ -1,0 +1,280 @@
+/* The look of the Hackathon 3 slides: black, grainy lime and blue blobs, Poppins. */
+:root {
+  --lime: #B7D14B;
+  --blue: #6E97B5;
+  --lilac: #A9A6D6;
+  --card: rgba(16, 16, 16, 0.78);
+  --line: rgba(255, 255, 255, 0.10);
+  --muted: #A3A3A3;
+  /* Memphis extras from the Yestalgia inspiration: only for shapes and some badges. */
+  --pink: #EFA9CE;
+  --orange: #F29A55;
+  --teal: #3E8E86;
+  --paper: #F3F3F3;
+  --main-left: 0px;
+}
+body:has([data-testid="stSidebar"][aria-expanded="true"]) { --main-left: 300px; }
+
+.stApp {
+  background:
+    radial-gradient(ellipse 50% 42% at 22% 0%, rgba(183, 209, 75, .80), transparent 70%),
+    radial-gradient(ellipse 28% 42% at 100% 42%, rgba(110, 151, 181, .75), transparent 70%),
+    radial-gradient(ellipse 42% 34% at 94% 98%, rgba(183, 209, 75, .80), transparent 70%),
+    radial-gradient(ellipse 26% 22% at 72% 100%, rgba(169, 166, 214, .55), transparent 70%),
+    #000;
+  background-attachment: fixed;
+}
+/* Film grain over everything, like the slide. */
+.stApp::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .18;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+[data-testid="stHeader"] { background: transparent; }
+[data-testid="stSidebar"] { background: rgba(0, 0, 0, .82); backdrop-filter: blur(14px);
+                            border-right: 1px solid var(--line); }
+.block-container { padding-top: 2.5rem; max-width: 1180px; }
+h2, h3 { font-weight: 700 !important; letter-spacing: -0.02em; }
+
+/* ------------------------------------------------------------ landing */
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;
+            margin: 2.2rem auto 1rem; max-width: 900px; }
+.feature { background: var(--card); border: 2px solid var(--paper); border-radius: 16px; padding: 16px 18px;
+           box-shadow: 5px 5px 0 var(--lime); }
+.feature:nth-child(2) { box-shadow: 5px 5px 0 var(--pink); }
+.feature:nth-child(3) { box-shadow: 5px 5px 0 var(--blue); }
+.feature b { display: block; font-size: .98rem; margin-bottom: 4px; }
+.feature span { font-size: .84rem; color: var(--muted); }
+.section-label { text-align: center; font-size: .75rem; letter-spacing: .25em; text-transform: uppercase;
+                 color: var(--lime); margin: 0 0 .6rem; }
+
+/* The search box in the middle of the page. */
+[data-testid="stMain"] [data-testid="stForm"], .st-key-search { background: rgba(10, 10, 10, .78); backdrop-filter: blur(12px);
+                         border: 2px solid var(--paper) !important; border-radius: 22px; padding: 1.4rem 1.6rem;
+                         box-shadow: 8px 8px 0 var(--lime); position: relative; z-index: 1; }
+
+/* "Press Enter to submit form": a small lime note just under the box, on the right,
+   so it never covers what you type and the box keeps its full width. */
+[data-testid="stMain"] [data-testid="stTextInput"] { margin-bottom: .9rem; }
+[data-testid="InputInstructions"] { position: absolute !important; top: calc(100% + 4px) !important;
+                                    bottom: auto !important; right: .3rem !important; left: auto !important;
+                                    transform: none !important; margin: 0 !important; padding: 0 !important;
+                                    line-height: 1 !important; background: none !important;
+                                    color: rgba(183, 209, 75, .8) !important; font-size: .66rem !important;
+                                    font-style: italic; white-space: nowrap; pointer-events: none; }
+[data-testid="stSidebar"] [data-testid="InputInstructions"] { display: none !important; }
+
+/* Primary buttons: black text on lime, like the slide's highlights. */
+button[kind="primaryFormSubmit"], button[kind="primary"] { color: #000 !important; font-weight: 700 !important; }
+
+/* ------------------------------------------------------------ loading */
+.loading { display: flex; flex-direction: column; align-items: center; justify-content: center;
+           min-height: 60vh; text-align: center; gap: 1.1rem; }
+/* One emoji at a time: a soft crossfade with a little bounce. No spinning. */
+.loading .emoji { position: relative; width: 80px; height: 80px; }
+.loading .emoji span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                       font-size: 3.4rem; opacity: 0; animation: one-at-a-time 8s infinite; }
+.loading .emoji span:nth-child(2) { animation-delay: 1s; }
+.loading .emoji span:nth-child(3) { animation-delay: 2s; }
+.loading .emoji span:nth-child(4) { animation-delay: 3s; }
+.loading .emoji span:nth-child(5) { animation-delay: 4s; }
+.loading .emoji span:nth-child(6) { animation-delay: 5s; }
+.loading .emoji span:nth-child(7) { animation-delay: 6s; }
+.loading .emoji span:nth-child(8) { animation-delay: 7s; }
+@keyframes one-at-a-time { 0% { opacity: 0; transform: translateY(6px); }
+                           3% { opacity: 1; transform: translateY(-6px); }
+                           6% { opacity: 1; transform: translateY(0); }
+                           11% { opacity: 1; transform: translateY(0); }
+                           13%, 100% { opacity: 0; transform: translateY(0); } }
+.loading h3 { font-size: 1.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: -0.03em; margin: 0;
+              text-shadow: 3px 3px 0 var(--pink); }
+.loading p { font-style: italic; font-weight: 300; color: #DADADA; margin: 0; }
+/* The bar is always green: a lime-tinted track and a striped lime fill that keeps moving. */
+.loading .bar { width: min(360px, 80vw); height: 12px; background: rgba(183, 209, 75, .25); border-radius: 999px;
+                border: 2px solid #000; box-shadow: 4px 4px 0 var(--paper); overflow: hidden; }
+.loading .bar div { height: 100%; border-radius: 999px; transition: width .5s;
+                    background: repeating-linear-gradient(-45deg, var(--lime) 0 10px, #CFE36A 10px 20px);
+                    background-size: 28px 28px; animation: stripes .8s linear infinite; }
+@keyframes stripes { to { background-position: 28px 0; } }
+/* Streamlit's own strip at the very top turns red and yellow while it runs; keep it lime. */
+[data-testid="stDecoration"] { background: var(--lime) !important; background-image: none !important; }
+
+/* ------------------------------------------------------------ results */
+.topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: .4rem; }
+.topbar .brand { font-weight: 800; font-size: 1.5rem; color: var(--lime); letter-spacing: -0.03em; }
+.topbar .summary { color: var(--muted); font-size: .9rem; }
+
+.card { background: var(--card); backdrop-filter: blur(10px); border: 2px solid var(--paper);
+        border-radius: 18px; overflow: hidden; transition: transform .15s, box-shadow .15s; margin-bottom: .8rem;
+        box-shadow: 6px 6px 0 var(--lime); }
+[data-testid="stColumn"]:nth-child(3n+2) .card { box-shadow: 6px 6px 0 var(--pink); }
+[data-testid="stColumn"]:nth-child(3n+3) .card { box-shadow: 6px 6px 0 var(--blue); }
+.card:hover { transform: translate(-2px, -2px); }
+.pic { position: relative; aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center;
+             font-size: 3rem; background: linear-gradient(135deg, rgba(183,209,75,.55), rgba(110,151,181,.55) 60%, rgba(169,166,214,.5)); }
+.pic img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; color: transparent; }
+.pic .chip, .pic .price { position: absolute; top: 10px; z-index: 1; }
+.pic .chip { left: 10px; }
+.pic .price { right: 12px; }
+/* Date: a teal chip. Price: a slanted banner, lime (or pink when free), black outline. */
+.chip { font-size: .72rem; font-weight: 600; color: #fff; background: var(--teal); border: 2px solid #000;
+        border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.price { font-size: .84rem; font-weight: 800; color: #000; background: var(--lime); border: 2px solid #000;
+         padding: 2px 12px; white-space: nowrap; transform: skewX(-12deg); box-shadow: 3px 3px 0 #000; }
+.price.free { background: var(--pink); }
+/* Every card body has the same height, so the Save / Invite buttons line up in a row.
+   Long lines end in "…" and "Check it out" always sits at the bottom. */
+.card .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; height: 232px;
+              box-sizing: border-box; overflow: hidden; }
+.card .title { font-size: 1.02rem; font-weight: 700; line-height: 1.3; color: #fff; flex: none;
+               display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .meta, .card .deal { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: none; }
+.card .meta { font-size: .8rem; color: var(--muted); }
+.card .deal { font-size: .8rem; color: var(--lime); }
+.card .pass { align-self: flex-start; font-size: .74rem; color: #000; background: var(--lilac);
+              border-radius: 999px; padding: 2px 9px; font-weight: 600; }
+.card a.go { font-size: .85rem; color: #fff; text-decoration: none; font-weight: 600; margin-top: auto; flex: none; }
+.card a.go::after { content: " ⟶"; color: var(--lime); }
+.card a.go:hover { color: var(--lime); }
+
+.empty { text-align: center; padding: 3rem 1rem; }
+.empty h3 { font-size: 1.8rem; font-weight: 800; text-transform: uppercase; margin: 0 0 .5rem; }
+.empty p { font-style: italic; font-weight: 300; color: #DADADA; }
+
+/* ------------------------------------------------------------ profile sidebar */
+.profile-head { display: flex; align-items: center; gap: 10px; margin-bottom: .6rem; }
+.avatar { width: 52px; height: 52px; flex: none; }
+.avatar svg { width: 52px; height: 52px; }
+.profile-head b { font-size: 1.1rem; }
+.profile-head span { display: block; font-size: .78rem; color: var(--muted); }
+.saved { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: .82rem; }
+.saved a { color: #fff; text-decoration: none; font-weight: 600; }
+.saved a:hover { color: var(--lime); }
+.saved span { color: var(--muted); display: block; font-size: .74rem; }
+.passcard { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px;
+            background: rgba(183, 209, 75, .06); font-size: .8rem; }
+.passcard b { font-size: .92rem; }
+.passcard ul { margin: 4px 0 4px 1rem; padding: 0; }
+.passcard li { color: #E6E6E6; }
+.passcard .small { color: var(--muted); font-size: .72rem; }
+.passcard a { color: var(--lime); font-weight: 600; text-decoration: none; }
+
+/* ------------------------------------------------------------ mission */
+.mission { text-align: center; max-width: 760px; margin: 3.2rem auto 0; }
+.mission h2 { font-size: clamp(1.5rem, 3.4vw, 2.3rem); font-weight: 800 !important; line-height: 1.15;
+              letter-spacing: -0.03em; margin: 0 0 .8rem; padding: 0; text-shadow: 3px 3px 0 var(--pink); }
+.mission p { color: #DADADA; font-size: 1rem; line-height: 1.7; margin: 0; }
+
+.prose { max-width: 760px; margin: 1rem auto 2rem; position: relative; z-index: 1; }
+.prose .section-label { text-align: left; }
+.prose h1 { font-size: clamp(2.2rem, 5.5vw, 4rem); font-weight: 800; text-transform: uppercase;
+            letter-spacing: -0.04em; line-height: 1; margin: 0 0 1rem; padding: 0; text-shadow: 4px 4px 0 var(--pink); }
+.prose .lead { font-style: italic; font-weight: 300; font-size: 1.25rem; color: #EDEDED; margin-bottom: 2.2rem; }
+.prose h3 { color: var(--lime); font-size: 1.2rem; margin: 0; padding: 0; text-transform: uppercase; letter-spacing: -0.01em; }
+/* Each part of the story is a chunky card with a sticker, like the intro screens. */
+.prose .block { position: relative; z-index: 1; background: var(--card); backdrop-filter: blur(10px);
+                border: 2px solid var(--paper); border-radius: 18px; padding: 1.2rem 1.4rem 1rem;
+                margin-bottom: 1.4rem; box-shadow: 6px 6px 0 var(--lime); }
+.prose .block:nth-of-type(3n+2) { box-shadow: 6px 6px 0 var(--pink); }
+.prose .block:nth-of-type(3n+3) { box-shadow: 6px 6px 0 var(--blue); }
+.prose .block-head { display: flex; align-items: center; gap: 12px; margin-bottom: .5rem; }
+.prose .sticker { width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--lime);
+                  border: 2.5px solid #000; box-shadow: 3px 3px 0 var(--paper); display: flex;
+                  align-items: center; justify-content: center; font-size: 1.3rem; }
+.prose .block p:last-child, .prose .block ul:last-child { margin-bottom: 0; }
+.prose p, .prose li { color: #DADADA; font-size: 1rem; line-height: 1.75; }
+.prose ul { padding-left: 1.2rem; }
+.prose li { margin-bottom: .5rem; }
+.prose li b { color: #fff; }
+.prose .credits { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line);
+                  font-size: .85rem; color: var(--muted); }
+
+/* ------------------------------------------------------------ memphis bits */
+/* Shapes around the page edges. They sit behind everything and never take clicks. */
+.deco { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.deco .shape { position: absolute; }
+@media (max-width: 900px) { .deco .shape { scale: .6; opacity: .8; } }
+@media (max-width: 640px) { .deco { display: none; } }
+[data-testid="stMainBlockContainer"] > div { position: relative; z-index: 1; }
+
+/* Buttons: chunky, black outline, hard light shadow; they press down when clicked. */
+button[kind="primary"], [data-testid="stBaseButton-primary"],
+button[kind="secondary"], [data-testid="stBaseButton-secondary"] {
+  border: 2.5px solid #000 !important; border-radius: 10px !important; font-weight: 700 !important;
+  box-shadow: 4px 4px 0 var(--paper); transition: transform .08s, box-shadow .08s; }
+button[kind="primary"], [data-testid="stBaseButton-primary"] { color: #000 !important; }
+button[kind="secondary"], [data-testid="stBaseButton-secondary"] { background: #121212 !important;
+  border-color: var(--paper) !important; box-shadow: 4px 4px 0 var(--lime); }
+button[kind="primary"]:hover, [data-testid="stBaseButton-primary"]:hover,
+button[kind="secondary"]:hover, [data-testid="stBaseButton-secondary"]:hover { transform: translate(-1px, -1px); }
+button[kind="primary"]:active, [data-testid="stBaseButton-primary"]:active,
+button[kind="secondary"]:active, [data-testid="stBaseButton-secondary"]:active {
+  transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--paper); }
+
+/* Selected pills and the chosen "When": lime with a black outline and a hard shadow. */
+[data-testid="stButtonGroup"] button[aria-checked="true"],
+[data-testid="stButtonGroup"] button[aria-pressed="true"] {
+  background: var(--lime) !important; color: #000 !important; border: 2px solid #000 !important;
+  box-shadow: 3px 3px 0 var(--paper); font-weight: 600 !important; }
+
+/* Search page header */
+.search-head { text-align: center; margin: 0 auto 1.4rem; position: relative; z-index: 1; }
+.search-head .brand { font-weight: 800; color: var(--lime); letter-spacing: -0.03em; font-size: 1.2rem; }
+.search-head h1 { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 800; text-transform: uppercase;
+                  letter-spacing: -0.04em; line-height: 1.05; margin: .3rem 0 .4rem; padding: 0;
+                  text-shadow: 4px 4px 0 var(--pink); }
+.search-head p { font-style: italic; font-weight: 300; color: #EDEDED; margin: 0; }
+
+/* Date picker: a roomier field and a lime summary pill under it. */
+[data-testid="stDateInput"] [data-baseweb="input"] { border: 2px solid var(--paper) !important;
+  box-shadow: 4px 4px 0 var(--lime); border-radius: 10px !important; }
+[data-testid="stDateInput"] input { padding: .7rem .9rem !important; font-weight: 500; letter-spacing: .02em; }
+.date-summary { display: inline-block; margin-top: .3rem; background: var(--lime); color: #000; font-weight: 700;
+                font-size: .85rem; border: 2px solid #000; border-radius: 999px; padding: 4px 14px;
+                box-shadow: 3px 3px 0 var(--paper); }
+
+/* Intro: progress dots */
+.dots { display: flex; justify-content: center; gap: 10px; margin: .2rem 0 1rem; }
+.dots span { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--paper); }
+.dots span.on { background: var(--lime); border-color: #000; box-shadow: 2px 2px 0 var(--paper); width: 30px; border-radius: 999px; }
+
+/* Invite pop-up: the activity's picture, then green share buttons. */
+.invite-card { border: 2px solid var(--paper); border-radius: 16px; overflow: hidden; box-shadow: 5px 5px 0 var(--lime);
+               margin-bottom: 1rem; background: var(--card); }
+.invite-card .pic { aspect-ratio: 21 / 8; font-size: 3rem; display: flex; align-items: center; justify-content: center;
+                    background: linear-gradient(135deg, rgba(183,209,75,.55), rgba(110,151,181,.55) 60%, rgba(169,166,214,.5)); }
+.invite-card .body { padding: 10px 14px 12px; }
+.invite-card .title { font-weight: 700; font-size: 1.05rem; }
+.invite-card .meta { font-size: .8rem; color: var(--muted); }
+.section-label.left { text-align: left; margin-top: .4rem; }
+.shares { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: .8rem; }
+.shares a.share { background: var(--lime); color: #000 !important; text-decoration: none; font-weight: 700;
+                  font-size: .88rem; border: 2px solid #000; border-radius: 10px; padding: 7px 14px;
+                  box-shadow: 3px 3px 0 var(--paper); transition: transform .08s, box-shadow .08s; }
+.shares a.share:hover { transform: translate(-1px, -1px); }
+.shares a.share:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--paper); }
+
+/* The gemeente box in the sidebar stays light: no big search-box frame. */
+[data-testid="stSidebar"] [data-testid="stForm"] { border: none !important; padding: 0 !important; box-shadow: none; }
+
+
+/* ------------------------------------------------------------ profile page */
+.profile-hero { position: relative; z-index: 1; display: flex; align-items: center; gap: 20px;
+                max-width: 1100px; margin: 0 auto 1.6rem; }
+.avatar.big, .avatar.big svg { width: 96px; height: 96px; }
+.profile-hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 800; text-transform: uppercase;
+                   letter-spacing: -0.04em; line-height: 1; margin: 0; padding: 0; text-shadow: 4px 4px 0 var(--pink); }
+.profile-hero p { font-style: italic; font-weight: 300; color: #EDEDED; margin: .4rem 0 0; }
+.profile-title { position: relative; z-index: 1; font-size: 1.4rem !important; font-weight: 800 !important;
+                 text-transform: uppercase; color: var(--lime); margin: 1.6rem 0 .6rem !important; padding: 0 !important; }
+.profile-sub { color: #DADADA; margin: -.3rem 0 .8rem; }
+.empty.small { padding: 1rem 0 .6rem; text-align: left; }
+.st-key-passbox { background: rgba(10, 10, 10, .78); border: 2px solid var(--paper); border-radius: 18px;
+                  padding: 1rem 1.2rem; box-shadow: 6px 6px 0 var(--lime); margin-bottom: 1.2rem; position: relative; z-index: 1; }
+/* Pass cards: chunky, in a grid on the profile page, one column in the sidebar. */
+.passgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-bottom: .6rem;
+            position: relative; z-index: 1; }
+.passcard { background: var(--card) !important; border: 2px solid var(--paper) !important; border-radius: 16px !important;
+            padding: 14px 16px !important; box-shadow: 5px 5px 0 var(--pink); font-size: .85rem !important; }
+.passcard:nth-child(3n+2) { box-shadow: 5px 5px 0 var(--lime); }
+.passcard:nth-child(3n+3) { box-shadow: 5px 5px 0 var(--blue); }
+.passcard b { font-size: 1rem !important; }

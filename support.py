@@ -1,13 +1,6 @@
-import os
-from dotenv import load_dotenv
-import anthropic
 from urllib.parse import urlparse
-import json
 
-
-load_dotenv()
-
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+from claude_search import search_json
 
 
 # ---------------------------------------------------------------------------
@@ -29,6 +22,11 @@ NATIONAL_DOMAINS = [
     "werk.nl",
     "juridischloket.nl",
     "zorgtoeslag.nl",
+    # Passes that make going out, sport and culture cheaper, run nationally.
+    "cjp.nl",
+    "jeugdfondssportencultuur.nl",
+    "museumkaart.nl",
+    "ns.nl",
 ]
 
 # Gemeente sites are usually gemeentename.nl, which we work out from the
@@ -38,6 +36,11 @@ GEMEENTE_DOMAINS = {
     "the hague": ["denhaag.nl", "ooievaarspas.nl"],
     "rotterdam": ["rotterdam.nl", "rotterdampas.nl"],
     "amsterdam": ["amsterdam.nl", "stadspas.nl"],
+    "utrecht": ["utrecht.nl", "u-pas.nl"],
+    "leiden": ["leiden.nl", "leidenpas.nl"],
+    "delft": ["delft.nl", "delftpas.nl"],
+    "groningen": ["gemeente.groningen.nl", "groningen.nl"],
+    "eindhoven": ["eindhoven.nl"],
 }
 
 # Same idea for schools: the domain almost never looks like the full name.
@@ -98,113 +101,58 @@ def is_official_link(url, municipality, institution=None):
     return False
 
 
-def find_schemes(municipality, institution=None):
-    """Ask Claude to search for support schemes, then keep only the official ones.
+def find_passes(municipality, institution=None):
+    """Find the passes and cards that make activities cheaper where the user lives.
 
-    Claude finds and copies. It never says the user qualifies and it never
-    makes up a number: plain Python below throws away anything unsourced.
+    Only things that lower the price of going out, sport, culture or travel.
+    No income support: this app is about doing fun things, not life admin.
+    Claude finds and copies; plain Python below throws away anything that does
+    not link to an official page. Returns a list, or None if the search failed.
     """
-    institution_line = ""
+    school = ""
     if institution:
-        institution_line = (
-            f'- "student": schemes from {institution} itself, such as an emergency fund,\n'
-            f"  a hardship fund or a student discount. Search {institution}'s own website.\n"
-        )
-    else:
-        institution_line = (
-            '- "student": national schemes for students, such as DUO studiefinanciering.\n'
-        )
+        school = (f'- "student": what {institution} offers its students for cheaper sport or\n'
+                  f"  culture, like a student sports card. Search {institution}'s own site.\n")
 
-    prompt = f"""Find money support schemes that a young adult aged 18-27 on a low income
-living in the municipality of {municipality}, Netherlands could apply for.
+    prompt = f"""Which passes or cards make activities cheaper for a young adult (18-27) on a
+low income living in {municipality}, Netherlands? Activities means sport, culture,
+going out, cinema, festivals and travel. Nothing about income, benefits, rent or debt.
 
-Look for three types:
-- "gemeente": schemes from the municipality of {municipality} itself, which depend on
-  where the person lives. For example a stadspas, bijzondere bijstand, or a youth fund.
-- "national": schemes from the Dutch government that apply everywhere, such as
-  zorgtoeslag or huurtoeslag.
-{institution_line}
-Only use official pages: the gemeente's own website, a government website
-(rijksoverheid.nl, belastingdienst.nl, duo.nl and the like), or the school's own site.
-Do not use news articles, blogs or advice sites.
+Look for:
+- "gemeente": the city pass of {municipality} (like Ooievaarspas in Den Haag, U-pas in
+  Utrecht, Rotterdampas, Stadspas Amsterdam) and any local sport or culture fund.
+- "national": cards that work everywhere and fit this age, like CJP.
+  Skip anything with an age limit below 18.
+{school}
+Only official pages: the gemeente, the pass's own site, or the school.
 
-Return ONLY a JSON array. No explanation, no markdown, no backticks.
-Each object must have exactly these keys:
-- "name": the name of the scheme
-- "type": exactly one of "gemeente", "national", "student"
-- "conditions": a list of short sentences, each starting with "If you".
-  For example "If you are between 18 and 27", "If you live in {municipality}".
-  Copy the conditions from the page. Keep each one under 12 words.
-- "documents": a list of the papers the person has to hand in when they apply.
-  An empty list if the page does not say.
-- "duration": how long the application takes, copied word for word from the page,
-  for example "klaar binnen 8 werkdagen". Use null if the page does not say it.
-- "link": the page where you actually apply
-- "source": the page where you found this information
+Return ONLY a JSON array. Each object has exactly these keys:
+"name", "type" (one of "gemeente", "national", "student"),
+"perks" (list of up to 4 concrete activity discounts copied from the page, each under
+10 words, like "Free swimming at city pools" or "50% off sports club membership"),
+"conditions" (list of short "If you ..." sentences copied from the page),
+"cost" (what the pass itself costs, copied, or null), "link" (page where you apply).
+Never say the user qualifies. Never invent an amount or a limit."""
 
-Rules you must follow:
-- Never write that the user qualifies, is entitled to something, or will receive it.
-  You do not know their situation. Only list the conditions from the page.
-- Never invent an amount of money, an income limit, or a waiting time.
-  If the page does not state it, leave it out or use null.
-- If you cannot find an official link, do not include that scheme."""
-
-    try:
-        response = client.messages.create(
-            model="claude-sonnet-5",
-            max_tokens=16000,
-            messages=[{"role": "user", "content": prompt}],
-            tools=[{
-                'type': 'web_search_20250305',
-                'name': "web_search",
-                # Three types to cover, so a few searches each.
-                'max_uses': 8
-            }]
-        )
-    except Exception as error:
-        print("The search failed:", error)
-        return []
-
-    if response.stop_reason == "max_tokens":
-        print("The answer was cut off before it was finished.")
-        return []
-
-    answer = ''
-    for block in response.content:
-        if block.type == 'text':
-            answer += block.text
-
-    clean = answer.strip()
-    if clean.startswith('```'):
-        clean = clean.split('```')[1]
-        if clean.startswith('json'):
-            clean = clean[4:]
-
-    try:
-        schemes = json.loads(clean)
-    except json.JSONDecodeError:
-        print('The AI did not return valid JSON')
-        return []
-
-    if not isinstance(schemes, list):
-        return []
-
-    return filter_schemes(schemes, municipality, institution)
+    passes = search_json(prompt, 4)
+    if passes is None:
+        return None
+    return filter_passes(passes, municipality, institution)
 
 
-def filter_schemes(schemes, municipality, institution=None):
+def filter_passes(passes, municipality, institution=None):
     """Throw away anything we cannot send the user to an official page for."""
     kept = []
-    for scheme in schemes:
-        if not isinstance(scheme, dict):
+    for item in passes:
+        if not is_official_link(item.get("link"), municipality, institution):
             continue
-        if not is_official_link(scheme.get("link"), municipality, institution):
+        if item.get("type") not in ("gemeente", "national", "student"):
             continue
-        if scheme.get("type") not in ("gemeente", "national", "student"):
+        if not isinstance(item.get("perks"), list) or not item["perks"]:
             continue
-        if not isinstance(scheme.get("conditions"), list):
-            continue
-        kept.append(scheme)
+        if not isinstance(item.get("conditions"), list):
+            item["conditions"] = []
+        kept.append(item)
     return kept
 
 
@@ -216,6 +164,8 @@ if __name__ == "__main__":
         ("https://www.delft.nl/regelingen", "Delft", None),
         ("https://www.dehaagsehogeschool.nl/noodfonds", "Den Haag",
          "The Hague University of Applied Sciences"),
+        ("https://www.u-pas.nl/", "Utrecht", None),
+        ("https://www.cjp.nl/", "Utrecht", None),
         ("https://www.blogovergeld.nl/tips", "Den Haag", None),
         ("", "Den Haag", None),
     ]
@@ -223,15 +173,13 @@ if __name__ == "__main__":
         print(is_official_link(url, muni, inst), "|", url or "(empty)")
 
     print()
-    print("--- find_schemes('Den Haag') ---")
-    result = find_schemes("Den Haag")
-    for s in result:
+    print("--- find_passes('Utrecht') ---")
+    result = find_passes("Utrecht") or []
+    for p in result:
         print()
-        print(s.get("type").upper(), "|", s.get("name"))
-        for c in s.get("conditions", []):
-            print("   -", c)
-        print("   documents:", s.get("documents"))
-        print("   duration:", s.get("duration"))
-        print("   apply:", s.get("link"))
+        print(p.get("type").upper(), "|", p.get("name"), "|", p.get("cost"))
+        for perk in p.get("perks", []):
+            print("   +", perk)
+        print("   apply:", p.get("link"))
     print()
-    print(len(result), "schemes kept")
+    print(len(result), "passes kept")

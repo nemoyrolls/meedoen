@@ -1,155 +1,123 @@
-import os
-from dotenv import load_dotenv
-import anthropic
 from datetime import date
-import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from claude_search import search_json
 
 
-load_dotenv()
-
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-
-
-# Display name -> search hints. The hints are only put in the prompt for the
-# categories the user actually picked, so the search stays focused.
+# Display name -> (emoji, search hints). Only the hints for the categories the
+# user picked go into a prompt. The order here is the order the app shows them.
 CATEGORIES = {
-    "Sport": "sports clubs, free training sessions, open days",
-    "Culture": "museums, theatre, free museum days",
-    "Music & nightlife": "concerts, open mics, festivals",
-    "Student": "university and hogeschool event pages, student associations",
-    "Community": "buurthuis, library, volunteering",
-    "Outdoor": "parks, beach, walks, markets",
-    "Workshops": "courses, workshops, free lessons",
-    "Deals & new": "new openings, discounts, special offers",
+    "Parties & nightlife": ("🪩", "club nights, student parties, new party concepts, free-entry nights"),
+    "Festivals": ("🎪", "festivals, free city festivals, cheap or early-bird festival tickets"),
+    "Deals & discounts": ("🏷️", "student discounts, 2-for-1 offers, cheap cinema days, happy hours, CJP deals"),
+    "Cheap trips": ("🚆", "cheap train tickets and day trips: NS Dal Voordeel, NS Groepsretour, Spoordeelwinkel, supermarket or drugstore train ticket actions, FlixBus deals"),
+    "New in town": ("✨", "new openings, pop-ups, launch events with free entry or an opening offer"),
+    "Live music": ("🎸", "concerts, open mics, jam sessions"),
+    "Culture": ("🎭", "museums, theatre, film, free museum days"),
+    "Sport": ("⚽", "sports clubs, free training sessions, open days, cheap sport with a city pass"),
+    "Outdoor": ("🌳", "parks, beach, walks, markets"),
+    "Workshops": ("🎨", "courses, workshops, free lessons"),
+    "Student": ("🎓", "university and hogeschool event pages, student associations"),
+    "Community": ("🤝", "buurthuis, library, volunteering"),
 }
 
+# The fun is going somewhere else, so the "stay in the city" rule does not apply,
+# and the big national sites are where these deals live.
+TRAVEL_CATEGORIES = {"Cheap trips"}
+NATIONAL_OK = {"Cheap trips", "Deals & discounts", "Festivals"}
 
-def find_activities(city, categories, max_price, group_size=1, institution=None):
-    """Ask Claude to search the web for cheap activities in `city`.
 
-    Works for any city or gemeente in the Netherlands. The user picks the city,
-    and the search stays inside it so nobody has to pay for travel.
-    categories is a list of keys from CATEGORIES. Returns a list of dicts.
-    Nothing here decides whether the user may join or what they pay:
-    that is checked in plain Python (budget.py) from the returned numbers.
+def category_prompt(city, category, max_price, group_size, institution, until, start=None):
+    """One short, focused prompt per category. Short prompts are cheap prompts."""
+    hints = CATEGORIES[category][1]
+    today = date.today().isoformat()
+
+    if category in TRAVEL_CATEGORIES:
+        where = (f"Train or bus deals from {city} to somewhere fun, on sale now. "
+                 f'"location" is the destination, "price" the ticket per person.')
+    else:
+        where = f"In {city} or cycling distance of it. Never another city."
+
+    extra = ""
+    if category in NATIONAL_OK:
+        extra += "Big national sites (NS, festival sites, CJP) are fine here.\n"
+    else:
+        extra += "Prefer small local sources over the big national listing sites.\n"
+    if start and until:
+        extra += f"Only between {start.isoformat()} and {until.isoformat()}, or ongoing.\n"
+    elif until:
+        extra += f"Only on or before {until.isoformat()}, or ongoing.\n"
+    if group_size > 1:
+        extra += f"They are a group of {group_size}.\n"
+    if institution and category == "Student":
+        extra += f"They study at {institution}; search its own event pages too.\n"
+
+    return f"""Find up to 3 {category} activities for 18-27 year olds on a low income.
+Look for: {hints}.
+{where}
+Max {max_price} euro per person. Today is {today}; nothing in the past.
+Nothing for children, families or over-65s. Search in Dutch, with words like
+"studenten", "jongeren", "gratis", "korting".
+{extra}
+Return ONLY a JSON array. Each object has exactly these keys:
+"name", "price" (euro number per person, 0 if free), "date" (YYYY-MM-DD or null if ongoing),
+"location", "who_can_join" (copied from the page), "deal" (what makes it cheap, under
+12 words, or null), "pass_price" (a lower price with a city pass or CJP, copied like
+"Ooievaarspas: €2", or null), "source" (URL of the page).
+Copy every price, date and condition from the page. Never estimate. No source, no entry."""
+
+
+def find_activities(city, categories, max_price, group_size=1, institution=None,
+                    until=None, on_progress=None, start=None):
+    """Search every picked category at the same time and merge the results.
+
+    Works for any city or gemeente in the Netherlands. Nothing here decides
+    whether the user may join or what they pay: budget.py checks that in plain
+    Python. on_progress(category, done, total) is called as each one finishes.
+    Returns a list of dicts, or None if every search failed.
     """
     chosen = [c for c in categories if c in CATEGORIES]
     if not chosen:
         return []
 
-    today = date.today().isoformat()
-
-    hint_lines = ""
-    for name in chosen:
-        hint_lines += f"- {name}: {CATEGORIES[name]}\n"
-
-    institution_line = ""
-    if institution:
-        institution_line = (
-            f"The user studies at {institution}. Also search {institution}'s own website "
-            f"and event pages for activities open to their students.\n"
-        )
-
-    group_line = ""
-    if group_size > 1:
-        group_line = f"They are coming with {group_size} people in total, so prefer things a small group can join.\n"
-
-    prompt = f"""Find cheap or free activities in {city}, Netherlands for young adults
-aged 18-27 on a low income. Everything you return must be something a 20-year-old
-would actually turn up to on their own or with friends.
-
-You only get a few web searches, so aim them at this age group from the start.
-Write your search terms the way pages for young adults are written: combine the
-category words below with words like "studenten", "jongeren", "18+", "gratis",
-"korting", "borrel", "proefles", "open mic", "vereniging".
-Do not search for "kinderen", "gezin", "familie", "met kinderen" or "kidsproof",
-and do not open general "uitjes in {city}" listings. Those pages are written for
-families and they will use up your searches for nothing.
-
-Search these categories and nothing else:
-{hint_lines}
-Rules for what you may return:
-- Maximum price {max_price} euro per person.
-- Today is {today}. Only activities on or after this date.
-- In {city} itself or within walking or cycling distance of it. Never another city:
-  travel costs money the user does not have.
-- Nothing aimed at children, families with young kids, or over-65s.
-{institution_line}{group_line}
-Prioritise small, local, overlooked activities: neighbourhood initiatives, buurthuizen,
-libraries, student associations, small venues, volunteer groups and local notice boards.
-Do not fill the list with the big national event websites. At most one or two well-known
-listings; the rest should be things a search engine does not put on the first page.
-
-Aim for about 3 activities per category.
-
-Return ONLY a JSON array. No explanation, no markdown, no backticks.
-Each object must have exactly these keys:
-- "name": the name of the activity
-- "price": price in euros as a number, per person (0 if free)
-- "date": the date in YYYY-MM-DD format, or null if it is ongoing or anytime
-- "location": where it takes place
-- "category": exactly one of these strings: {", ".join(chosen)}
-- "who_can_join": who is allowed to join, copied from the page. For example
-  "Only for THUAS students", "Members only", "Open to everyone"
-- "source": the URL where you found it
-
-Copy the price from the page. Never estimate a price, a date or a condition.
-If you cannot find a source URL, do not include that activity."""
-
+    found = []
+    failures = 0
+    pool = ThreadPoolExecutor(max_workers=len(chosen))
     try:
-        response = client.messages.create(
-            model="claude-sonnet-5",
-            max_tokens=16000,
-            messages=[{"role": "user", "content": prompt}],
-            tools=[{
-                'type': 'web_search_20250305',
-                'name': "web_search",
-                'max_uses': 2 * len(chosen)
-            }]
-        )
-    except Exception as error:
-        print("The search failed:", error)
-        return []
+        jobs = {
+            pool.submit(
+                search_json,
+                category_prompt(city, c, max_price, group_size, institution, until, start),
+                3,
+            ): c
+            for c in chosen
+        }
+        for done, job in enumerate(as_completed(jobs), start=1):
+            category = jobs[job]
+            result = job.result()
+            if result is None:
+                failures += 1
+            else:
+                for item in result:
+                    item["category"] = category
+                found.extend(result or [])
+            if on_progress:
+                on_progress(category, done, len(chosen))
+    finally:
+        # If one search fails hard (no credits), do not start the ones still waiting.
+        pool.shutdown(wait=False, cancel_futures=True)
 
-    if response.stop_reason == "max_tokens":
-        print("The answer was cut off before it was finished. Try fewer categories.")
-        return []
-
-    answer = ''
-    for block in response.content:
-        if block.type == 'text':
-            answer += block.text
-
-    clean = answer.strip()
-    if clean.startswith('```'):
-        clean = clean.split('```')[1]
-        if clean.startswith('json'):
-            clean = clean[4:]
-
-    try:
-        activities = json.loads(clean)
-    except json.JSONDecodeError:
-        print('The AI did not return valid JSON')
-        return []
-
-    if not isinstance(activities, list):
-        return []
-    return activities
+    if failures == len(chosen):
+        return None
+    return found
 
 
 if __name__ == "__main__":
-    print("--- test 1: one category ---")
-    result = find_activities("Den Haag", ["Culture"], 10)
-    for a in result:
-        print(a.get("category"), "|", a.get("name"), "|", a.get("price"), "euro |",
-              a.get("date"), "|", a.get("who_can_join"))
-    print(len(result), "activities")
-
-    print()
-    print("--- test 2: two categories, with institution and group ---")
-    result = find_activities("Den Haag", ["Sport", "Student"], 5,
-                             group_size=3, institution="The Hague University of Applied Sciences")
-    for a in result:
-        print(a.get("category"), "|", a.get("name"), "|", a.get("price"), "euro |",
-              a.get("date"), "|", a.get("who_can_join"))
-    print(len(result), "activities")
+    import time
+    start = time.time()
+    result = find_activities("Den Haag", ["Parties & nightlife", "Cheap trips"], 15,
+                             on_progress=lambda c, d, t: print(f"  {d}/{t} {c}"))
+    for a in result or []:
+        print(a.get("category"), "|", a.get("name"), "|", a.get("price"), "|",
+              a.get("date"), "|", a.get("deal"), "|", a.get("pass_price"))
+    print(len(result or []), "activities in", round(time.time() - start), "seconds")

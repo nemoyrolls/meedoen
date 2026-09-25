@@ -1,0 +1,20 @@
+# The look of the Hackathon 3 slides: black, lime and soft blue, Poppins.
+# The grainy colour blobs in the background are CSS in app.py.
+[theme]
+base = "dark"
+primaryColor = "#B7D14B"
+backgroundColor = "#000000"
+secondaryBackgroundColor = "#161616"
+textColor = "#F2F2F2"
+borderColor = "#2A2A2A"
+font = "Poppins:https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,600;0,700;0,800;1,300&display=swap"
+headingFont = "Poppins:https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,600;0,700;0,800;1,300&display=swap"
+baseRadius = "0.75rem"
+
+[theme.sidebar]
+backgroundColor = "#000000"
+secondaryBackgroundColor = "#161616"
+
+[client]
+# Hide the "Deploy" button and developer menu.
+toolbarMode = "viewer"
